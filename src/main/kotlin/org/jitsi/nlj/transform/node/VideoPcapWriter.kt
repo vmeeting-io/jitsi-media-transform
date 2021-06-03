@@ -15,14 +15,12 @@
  */
 package org.jitsi.nlj.transform.node
 
-import org.jitsi.config.JitsiConfig
-import org.jitsi.metaconfig.config
-import org.jitsi.metaconfig.from
 import java.net.Inet4Address
-import java.util.Random
 import org.jitsi.nlj.PacketInfo
 import org.jitsi.nlj.codec.vp8.Vp8Utils
 import org.jitsi.nlj.rtp.VideoRtpPacket
+import org.jitsi.nlj.rtp.codec.vp8.Vp8Packet
+import org.jitsi.utils.logging.DiagnosticContext
 import org.jitsi.utils.logging2.cinfo
 import org.jitsi.utils.logging2.createChildLogger
 import org.jitsi.utils.logging2.Logger
@@ -42,19 +40,26 @@ import org.pcap4j.util.MacAddress
 import java.io.File
 
 class VideoPcapWriter(
-    parentLogger: Logger,
-    filePath: String = "/tmp/${Random().nextLong()}.pcap"
+        parentLogger: Logger,
+        endPointID: String,
+        videoPcapDir: String,
+        diagnosticContext: DiagnosticContext
 ) : ObserverNode("PCAP writer") {
     private val logger = createChildLogger(parentLogger)
-    private val filePath = filePath
-    private val filePathTmp = "$filePath.tmp"
+    // get the conference name only from conf JID
+    // e.g.,: test@muc.trial.vmeeting.io -> muc
+    private val confName = diagnosticContext["conf_name"].toString().split("@")[0]
+    private val confSite = diagnosticContext["conf_name"].toString().split("@")[1].split(".")[1]
+    private val confId = diagnosticContext["conf_id"]
+    private val filePath = "$videoPcapDir/${confSite}_${confName}__${confId}__$endPointID.pcap"
+    private val filePathTmp = "$videoPcapDir/$endPointID.pcap.tmp"
 
     private val lazyHandle = lazy {
         Pcaps.openDead(DataLinkType.EN10MB, 65536)
     }
     private val handle by lazyHandle
     private val lazyWriter = lazy {
-        logger.cinfo { "Pcap writer writing to file $filePath" }
+        logger.cinfo { "Pcap writer writing for endpoint $endPointID" }
         handle.dumpOpen(filePathTmp)
     }
     private val writer by lazyWriter
@@ -68,16 +73,9 @@ class VideoPcapWriter(
     }
 
     override fun observe(packetInfo: PacketInfo) {
-        val packet = packetInfo.packetAs<VideoRtpPacket>()
         // TODO: when VP9 is used, there will be only one stream, so we can remove this logic
-        if (videoSsrcToCap == null &&
-                packet.payloadType == vp8PayloadType &&
-                DePacketizer.isKeyFrame(packet.buffer, packet.payloadOffset, packet.payloadLength) &&
-                Vp8Utils.getHeightFromKeyFrame(packet) == resToCap) {
-            videoSsrcToCap = packet.ssrc
-        }
-        // we need to capture rtx packets (payload type != vp8payloadtype) for gstreamer conversion to work
-        if (videoSsrcToCap != packet.ssrc && packet.payloadType == vp8PayloadType) {
+        val packet = packetInfo.packetAs<Vp8Packet>()
+        if (packet.height !=resToCap) {
             return
         }
 

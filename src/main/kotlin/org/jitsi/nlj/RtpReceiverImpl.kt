@@ -123,6 +123,7 @@ class RtpReceiverImpl @JvmOverloads constructor(
             }
         }
     }
+
     private val silenceDiscarder = DiscardableDiscarder("Silence discarder", false)
     private val paddingOnlyDiscarder = DiscardableDiscarder("Padding-only discarder", true)
     private val statsTracker = IncomingStatisticsTracker(streamInformationStore)
@@ -147,7 +148,7 @@ class RtpReceiverImpl @JvmOverloads constructor(
 
     private val videoPcapEnabled: Boolean by config("jmt.video2pcap.enabled".from(JitsiConfig.newConfig))
     private val videoPcapDir: String by config("jmt.video2pcap.directory".from(JitsiConfig.newConfig))
-    private val videoPcapWriter = getVideoPcapWriter()
+    private val videoPcapWriter = if (videoPcapEnabled) VideoPcapWriter(logger, id, videoPcapDir, diagnosticContext) else null
 
     override fun isReceivingAudio() = audioBitrateCalculator.active
     override fun isReceivingVideo() = videoBitrateCalculator.active
@@ -237,13 +238,13 @@ class RtpReceiverImpl @JvmOverloads constructor(
                                 name = "Video path"
                                 predicate = PacketPredicate { it is VideoRtpPacket }
                                 path = pipeline {
-                                    videoPcapWriter?.let{node(it)}
                                     node(RtxHandler(streamInformationStore, logger))
                                     node(DuplicateTermination())
                                     node(retransmissionRequester)
                                     node(paddingOnlyDiscarder)
                                     node(VideoParser(streamInformationStore, logger))
                                     node(Vp8Parser(logger))
+                                    videoPcapWriter?.let{node(it)}
                                     node(videoBitrateCalculator)
                                     node(packetHandlerWrapper)
                                 }
@@ -264,15 +265,6 @@ class RtpReceiverImpl @JvmOverloads constructor(
                 }
             }
         }
-    }
-
-    private fun getVideoPcapWriter(): VideoPcapWriter? {
-        val curTime = DateTimeFormatter
-                .ofPattern("yyyyMMdd_HHmmss")
-                .withZone(ZoneOffset.systemDefault())
-                .format(Instant.now())
-        val filePath = "${videoPcapDir}/${curTime}_${id}.pcap"
-        return if (videoPcapEnabled) VideoPcapWriter(logger, filePath) else null
     }
 
     private fun handleIncomingPacket(packet: PacketInfo): Boolean {
