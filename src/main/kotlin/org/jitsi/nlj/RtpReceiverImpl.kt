@@ -18,6 +18,7 @@ package org.jitsi.nlj
 import org.jitsi.config.JitsiConfig
 import org.jitsi.metaconfig.config
 import org.jitsi.metaconfig.from
+import org.jitsi.nlj.format.VideoRedPayloadType
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.ScheduledExecutorService
 import org.jitsi.nlj.rtcp.CompoundRtcpParser
@@ -41,6 +42,7 @@ import org.jitsi.nlj.transform.node.RtpParser
 import org.jitsi.nlj.transform.node.SrtcpDecryptNode
 import org.jitsi.nlj.transform.node.SrtpDecryptNode
 import org.jitsi.nlj.transform.node.ToggleablePcapWriter
+import org.jitsi.nlj.transform.node.VideoPcapWriter
 import org.jitsi.nlj.transform.node.incoming.AudioLevelReader
 import org.jitsi.nlj.transform.node.incoming.BitrateCalculator
 import org.jitsi.nlj.transform.node.incoming.DuplicateTermination
@@ -73,6 +75,9 @@ import org.jitsi.utils.queue.CountingErrorHandler
 
 import org.jitsi.nlj.util.Bandwidth
 import org.jitsi.nlj.util.BufferPool
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 class RtpReceiverImpl @JvmOverloads constructor(
     val id: String,
@@ -143,6 +148,10 @@ class RtpReceiverImpl @JvmOverloads constructor(
     private val toggleablePcapWriter = ToggleablePcapWriter(logger, "$id-rx")
     private val videoBitrateCalculator = VideoBitrateCalculator(parentLogger)
     private val audioBitrateCalculator = BitrateCalculator("Audio bitrate calculator")
+
+    private val videoPcapEnabled: Boolean by config("jmt.video2pcap.enabled".from(JitsiConfig.newConfig))
+    private val videoPcapDir: String by config("jmt.video2pcap.directory".from(JitsiConfig.newConfig))
+    private val videoPcapWriter = if (videoPcapEnabled) VideoPcapWriter(logger, id, videoPcapDir, diagnosticContext) else null
 
     override fun isReceivingAudio() = audioBitrateCalculator.active
     override fun isReceivingVideo() = videoBitrateCalculator.active
@@ -239,6 +248,7 @@ class RtpReceiverImpl @JvmOverloads constructor(
                                     node(paddingOnlyDiscarder)
                                     node(VideoParser(streamInformationStore, logger))
                                     node(VideoQualityLayerLookup(logger))
+                                    videoPcapWriter?.let{node(it)}
                                     node(videoBitrateCalculator)
                                     node(packetHandlerWrapper)
                                 }
@@ -340,6 +350,7 @@ class RtpReceiverImpl @JvmOverloads constructor(
         NodeTeardownVisitor().visit(inputTreeRoot)
         incomingPacketQueue.close()
         toggleablePcapWriter.disable()
+        videoPcapWriter?.close()
     }
 
     override fun onRttUpdate(newRttMs: Double) {
