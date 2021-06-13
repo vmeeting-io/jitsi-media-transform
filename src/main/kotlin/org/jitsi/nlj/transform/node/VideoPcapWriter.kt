@@ -73,12 +73,6 @@ class VideoPcapWriter(
     }
 
     override fun observe(packetInfo: PacketInfo) {
-        // TODO: when VP9 is used, there will be only one stream, so we can remove this logic
-        val packet = packetInfo.packetAs<Vp8Packet>()
-        if (packet.height !=resToCap) {
-            return
-        }
-
         val udpPayload = UnknownPacket.Builder()
         // We can't pass offset/limit values to udpPayload.rawData, so we need to create an array that contains
         // only exactly what we want to write

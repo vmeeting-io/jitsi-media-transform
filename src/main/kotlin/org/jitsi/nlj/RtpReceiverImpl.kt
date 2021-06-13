@@ -247,8 +247,8 @@ class RtpReceiverImpl @JvmOverloads constructor(
                                     node(retransmissionRequester)
                                     node(paddingOnlyDiscarder)
                                     node(VideoParser(streamInformationStore, logger))
-                                    node(VideoQualityLayerLookup(logger))
                                     videoPcapWriter?.let{node(it)}
+                                    node(VideoQualityLayerLookup(logger))
                                     node(videoBitrateCalculator)
                                     node(packetHandlerWrapper)
                                 }
