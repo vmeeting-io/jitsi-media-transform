@@ -21,10 +21,10 @@ import java.time.Duration
 import kotlin.math.sign
 
 /**
- * [Bandwidth] models a current bandwidth, represented as a rate
- * of bits per second.
+ * [Bandwidth] models a current bandwidth, represented as a rate of bits per second.
  */
-inline class Bandwidth(val bps: Double) : Comparable<Bandwidth> {
+@JvmInline
+value class Bandwidth(val bps: Double) : Comparable<Bandwidth> {
     val kbps: Double
         get() = bps / 1000
     val mbps: Double
@@ -83,7 +83,7 @@ inline class Bandwidth(val bps: Double) : Comparable<Bandwidth> {
         fun fromString(str: String): Bandwidth {
             val (digits, notDigits) = str.partition { it.isDigit() }
             val amount = digits.toInt()
-            return when (val unit = notDigits.trim().toLowerCase()) {
+            return when (val unit = notDigits.trim().lowercase()) {
                 "bps" -> amount.bps
                 "kbps" -> amount.kbps
                 "mbps" -> amount.mbps

@@ -1,5 +1,5 @@
 /*
- * Copyright @ 2018 - present 8x8, Inc.
+ * Copyright @ 2018 - Present, 8x8 Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,9 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.jitsi.nlj.transform.node.outgoing
 
-package org.jitsi.nlj.util
+import org.jitsi.nlj.PacketInfo
+import org.jitsi.nlj.transform.node.ModifierNode
+import org.jitsi.rtp.rtp.RtpPacket
 
-fun StringBuffer.appendLnIndent(numSpaces: Int, msg: String) {
-    append(" ".repeat(numSpaces)).appendLine(msg)
+class HeaderExtEncoder : ModifierNode("Header extension encoder") {
+    override fun modify(packetInfo: PacketInfo): PacketInfo {
+        val rtpPacket = packetInfo.packetAs<RtpPacket>()
+
+        rtpPacket.encodeHeaderExtensions()
+
+        return packetInfo
+    }
+
+    override fun trace(f: () -> Unit) = f.invoke()
 }
