@@ -112,6 +112,11 @@ constructor(
      */
     val index = getIndex(eid, sid, tid)
 
+    /* Add a funtion to get local's Index */
+    fun getLocalIndex(): Int {
+        return index
+    }
+
     /**
      * {@inheritDoc}
      */
