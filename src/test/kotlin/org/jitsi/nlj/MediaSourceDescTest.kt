@@ -28,11 +28,12 @@ class MediaSourceDescTest : ShouldSpec() {
         val ssrcs = arrayOf(0xdeadbeefL, 0xcafebabeL, 0x01234567L)
         val source = createSource(
             ssrcs,
-            1, 3, "Fake owner"
+            1, 3, "Fake owner", "Fake name"
         )
 
         context("Source properties should be correct") {
             source.owner shouldBe "Fake owner"
+            source.sourceName shouldBe "Fake name"
             source.rtpEncodings.size shouldBe 3
 
             source.rtpLayers.size shouldBe 9
@@ -46,6 +47,7 @@ class MediaSourceDescTest : ShouldSpec() {
             for (i in source.rtpEncodings.indices) {
                 val e = source.rtpEncodings[i]
                 e.primarySSRC shouldBe ssrcs[i]
+                e.eid shouldBe i
                 e.layers.size shouldBe 3
                 for (j in e.layers.indices) {
                     val l = e.layers[j]
@@ -211,7 +213,8 @@ private fun createSource(
     primarySsrcs: Array<Long>,
     numSpatialLayersPerStream: Int,
     numTemporalLayersPerStream: Int,
-    owner: String
+    owner: String,
+    name: String?
 ): MediaSourceDesc {
     var height = 720
 
@@ -226,7 +229,7 @@ private fun createSource(
         ret
     }
 
-    return MediaSourceDesc(encodings, owner)
+    return MediaSourceDesc(encodings, owner, name)
 }
 
 /** A fake rate statistics object, for testing */
